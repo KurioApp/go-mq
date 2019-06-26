@@ -28,7 +28,7 @@
 # waiting for version > 0.20.0
 [[constraint]]
   name = "cloud.google.com/go"
-  version = "0.21.0"
+  version = "0.40.0"
 
 [[constraint]]
   name = "github.com/satori/go.uuid"
