@@ -4,26 +4,33 @@
 MQ is go API to communicate with messaging queue system.
 
 ## Index
-- [Getting Started](#getting-started)
-- [Support and Contribution](#support-and-contribution)
-- [Example](#example)
+
+- [go-mq](#go-mq)
+	- [Index](#index)
+		- [Getting Started](#getting-started)
+		- [Support and Contribution](#support-and-contribution)
+		- [Example](#example)
+			- [Google Pubsub](#google-pubsub)
 
 ### Getting Started
 
-To use this library, you could simple download it with:
+To use this library
+
+```bash
+go get -u github.com/KurioApp/go-mq
 ```
-go get -u -v github.com/KurioApp/go-mq
-```
+
 ### Support and Contribution
 
 To contribute to this project, you could submit a Pull Request (PR) or just file an [issue](https://github.com/KurioApp/go-mq/issues/new).
 
 ### Example
 
-MQ is a go API to communicate with messaging queue system like RabbitMQ, Google Pubsub, Redis Pubsub, Kafka etc. But unfortunately, currently we still support only for Google Pubsub. 
+MQ is a go API to communicate with messaging queue system like RabbitMQ, Google Pubsub, Redis Pubsub, Kafka etc. But unfortunately, currently we still support only for Google Pubsub.
 
 #### Google Pubsub
-To use the Google Pubsub messaging queue system, you could do it like this examples below. 
+
+To use the Google Pubsub messaging queue system, you could follow the example below.
 
 ```go
 package main

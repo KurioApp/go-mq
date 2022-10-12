@@ -1,0 +1,5 @@
+services:
+  pubsub:
+    image: aongko/pubsub-emulator
+    ports:
+      - 8538:8538

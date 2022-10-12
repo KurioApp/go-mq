@@ -1,63 +1,42 @@
 SOURCES := $(shell find . -name '*.go' -type f -not -path './vendor/*'  -not -path '*/mocks/*')
 
-PACKAGE := $(shell go list)
-GOOS := $(shell go env GOOS)
-GOARCH = $(shell go env GOARCH)
-OBJ_DIR := $(GOPATH)/pkg/$(GOOS)_$(GOARCH)/$(PACKAGE)
+GCP_PROJECT ?= kurio-dev
+GCP_TOPIC ?= dev.gomq.test
+GCP_SUBSCRIPTION ?= dev.gomq.test.sub1
+GCP_PUBSUB_EMULATOR ?= localhost:8538
 
 # Dependencies Management
-.PHONY: vendor-prepare
-vendor-prepare:
-	@echo "Installing dep"
-	@go get -u -v github.com/golang/dep/cmd/dep
+.PHONY: prepare-dev
+prepare-dev: lint-prepare vendor
 
-Gopkg.lock: Gopkg.toml
-	@dep ensure -update $(DEP_OPTS)
-
-.PHONY: vendor-update
-vendor-update:
-	@dep ensure -update $(DEP_OPTS)
-
-vendor: Gopkg.lock
-	@dep ensure $(DEP_OPTS)
-
-.PHONY: vendor-optimize
-vendor-optimize: vendor
-	@dep prune
-
-.PHONY: clean-vendor
-clean-vendor:
-	@rm -rf vendor
+.PHONY: vendor
+vendor: go.mod go.sum
+	@echo "Installing depedency"
+	@go get ./...
 
 # Linter
 .PHONY: lint-prepare
 lint-prepare:
-	@echo "Installing gometalinter"
-	@go get -u github.com/alecthomas/gometalinter
-	@gometalinter --install
+	@echo "Installing golangci-lint"
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 .PHONY: lint
-lint: vendor
-	@gometalinter --cyclo-over=25 --deadline=2m --vendor ./...
+lint:
+	golangci-lint run ./...
+
+.PHONY: pubsub-up
+pubsub-up:
+	docker-compose up -d pubsub
+
+.PHONY: pubsub-down
+pubsub-down:
+	docker-compose stop pubsub
 
 # Testing
 .PHONY: test
-test: vendor
+test:
 	@go test -short $(TEST_OPTS) ./...
 
 .PHONY: test-pubsub
-test-pubsub: vendor
-	@go test -v $(TEST_OPTS) ./pubsub -gcp.project-id "$(GCP_PROJECT)" -gcp.topic-id "$(GCP_TOPIC)" -gcp.subscription-id "$(GCP_SUBSCRIPTION)" -gcp.credentials-file "$(GCP_CREDENTIALS_FILE)"
-
-# Build and Installation
-.PHONY: install
-install: vendor
-	@go install ./...
-
-.PHONY: uninstall
-uninstall:
-	@echo "Removing binaries and libraries"
-	@go clean -i ./...
-	@if [ -d $(OBJ_DIR) ]; then \
-		rm -rf $(OBJ_DIR); \
-	fi
+test-pubsub:
+	@go test -v $(TEST_OPTS) ./pubsub -gcp.project-id "$(GCP_PROJECT)" -gcp.topic-id "$(GCP_TOPIC)" -gcp.subscription-id "$(GCP_SUBSCRIPTION)" -gcp.pubsub-emulator "$(GCP_PUBSUB_EMULATOR)"

@@ -3,26 +3,25 @@ package pubsub_test
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+	"math/rand"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/KurioApp/go-mq/pubsub"
+	gpubsub "cloud.google.com/go/pubsub"
 
 	mq "github.com/KurioApp/go-mq"
-	uuid "github.com/satori/go.uuid"
-	"google.golang.org/api/option"
-	tilde "gopkg.in/mattes/go-expand-tilde.v1"
-
-	gpubsub "cloud.google.com/go/pubsub"
+	"github.com/KurioApp/go-mq/pubsub"
 )
 
 var (
-	flagProjectID       = flag.String("gcp.project-id", "", "Google Cloud Project ID")
-	flagTopicID         = flag.String("gcp.topic-id", "", "Google Cloud Topic ID")
-	flagSubscriptionID  = flag.String("gcp.subscription-id", "", "Google Cloud Subscription ID")
-	flagCredentialsFile = flag.String("gcp.credentials-file", "", "Google Cloud Credentials File")
-	flagConnectTimeout  = flag.Duration("gcp.connect-timeout", 5*time.Second, "Google Cloud connect timeout")
+	flagEmulatorHost   = flag.String("gcp.pubsub-emulator", "localhost:8538", "Google PubSub Emulator Host")
+	flagProjectID      = flag.String("gcp.project-id", "", "Google Cloud Project ID")
+	flagTopicID        = flag.String("gcp.topic-id", "", "Google Cloud Topic ID")
+	flagSubscriptionID = flag.String("gcp.subscription-id", "", "Google Cloud Subscription ID")
+	flagConnectTimeout = flag.Duration("gcp.connect-timeout", 5*time.Second, "Google Cloud connect timeout")
 )
 
 func TestSubscribe(t *testing.T) {
@@ -51,7 +50,7 @@ func TestSubscribe(t *testing.T) {
 	}()
 
 	// Submit job
-	text := uuid.NewV4().String()
+	text := fmt.Sprintf("%s#%d", time.Now().Format("2006-01-02T15:04:05Z07:00"), rand.Intn(100))
 	res := fix.topic.Publish(context.Background(), &gpubsub.Message{Data: []byte(text)})
 	if _, err := res.Get(context.Background()); err != nil {
 		t.Fatal(err)
@@ -91,7 +90,7 @@ func TestPublish(t *testing.T) {
 	}()
 
 	// Submit job
-	text := uuid.NewV4().String()
+	text := fmt.Sprintf("%s#%d", time.Now().Format("2006-01-02T15:04:05Z07:00"), rand.Intn(100))
 	if _, err := fix.pubSub.Publish(*flagTopicID, []byte(text)).Get(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -150,16 +149,17 @@ func (f *fixture) tearDown() {
 }
 
 func setup(t *testing.T) *fixture {
-	credsFile, err := tilde.Expand(*flagCredentialsFile)
-	if err != nil {
-		t.Fatal(err)
+	if _, ok := os.LookupEnv("PUBSUB_EMULATOR_HOST"); !ok {
+		if err := os.Setenv("PUBSUB_EMULATOR_HOST", *flagEmulatorHost); err != nil {
+			log.Fatal("error setting pubsub emulator host: ", err)
+		}
 	}
 
 	connect := func() (*pubsub.PubSub, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), *flagConnectTimeout)
 		defer cancel()
 
-		return pubsub.New(ctx, *flagProjectID, option.WithCredentialsFile(credsFile))
+		return pubsub.New(ctx, *flagProjectID)
 	}
 
 	pubSub, err := connect()
@@ -182,6 +182,8 @@ func setup(t *testing.T) *fixture {
 	}
 
 	log.Println("Subscription ready")
+
+	rand.Seed(time.Now().UnixNano())
 
 	return &fixture{
 		t:      t,
